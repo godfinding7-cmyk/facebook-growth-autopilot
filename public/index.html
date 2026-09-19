@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FB Growth Autopilot</title>
+<style>
+:root{--bg:#0b1020;--card:#131a2b;--muted:#94a3b8;--text:#eef2ff;--accent:#7c3aed;--line:#26324a;--ok:#22c55e}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,Arial;background:linear-gradient(180deg,#080c18,#111827);color:var(--text)}
+.wrap{max-width:1120px;margin:auto;padding:24px}.top{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}.brand{font-size:24px;font-weight:800}.muted{color:var(--muted)}
+button{border:0;border-radius:12px;padding:11px 14px;font-weight:700;cursor:pointer;background:var(--accent);color:white}button.secondary{background:#202a41}button:disabled{opacity:.5;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}.stat,.card{background:rgba(19,26,43,.9);border:1px solid var(--line);border-radius:18px;padding:18px}.n{font-size:28px;font-weight:800}.cards{display:grid;gap:14px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.score{padding:5px 9px;border-radius:999px;background:#1e293b;font-weight:700}.source{font-size:13px;color:var(--muted)}textarea{width:100%;min-height:115px;background:#0b1221;border:1px solid var(--line);border-radius:12px;color:var(--text);padding:12px;margin:10px 0}.pill{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:4px 8px}.ok{color:var(--ok)}
+@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}.wrap{padding:16px}}
+</style>
+</head>
+<body><main class="wrap">
+<div class="top"><div><div class="brand">FB Growth Autopilot</div><div class="muted">Research → Draft → Approve → Publish</div></div><div class="row"><span id="fbStatus" class="pill">Checking Facebook…</span><button onclick="refreshTrends()">Find Fresh Topics</button></div></div>
+<section class="grid"><div class="stat"><div class="muted">Trends</div><div class="n" id="s1">0</div></div><div class="stat"><div class="muted">Ready</div><div class="n" id="s2">0</div></div><div class="stat"><div class="muted">Approved</div><div class="n" id="s3">0</div></div><div class="stat"><div class="muted">Published</div><div class="n" id="s4">0</div></div></section>
+<div class="top"><h2>Content Queue</h2><span class="muted">Approval mode is ON</span></div><section id="cards" class="cards"><div class="card muted">Click “Find Fresh Topics”.</div></section>
+</main>
+<script>
+let state={candidates:[],approved:[],published:[]};
+async function api(url,opts={}){const r=await fetch(url,{headers:{'Content-Type':'application/json'},...opts});const j=await r.json();if(!r.ok) throw new Error(j.error||'Request failed');return j}
+function esc(s=''){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function render(){document.querySelector('#s1').textContent=state.candidates.length;document.querySelector('#s2').textContent=state.candidates.filter(x=>x.caption).length;document.querySelector('#s3').textContent=state.approved.length;document.querySelector('#s4').textContent=state.published.length;const c=document.querySelector('#cards');c.innerHTML=state.candidates.map(x=>`<article class="card"><div class="row"><span class="score">${x.score} score</span><span class="source">${esc(x.source||'')}</span></div><h3>${esc(x.title)}</h3>${x.sourceUrl?`<a class="source" target="_blank" rel="noopener" href="${esc(x.sourceUrl)}">Open source</a>`:''}<textarea id="cap-${x.id}" placeholder="Generate caption…">${esc(x.caption||'')}</textarea><div class="row"><button class="secondary" onclick="gen('${x.id}')">Generate</button><button class="secondary" onclick="approve('${x.id}')">Approve</button><button onclick="publishPost('${x.id}')">Publish</button></div></article>`).join('')||'<div class="card muted">No topics found.</div>'}
+async function load(){state=await api('/api/state');render();const h=await api('/api/health');const e=document.querySelector('#fbStatus');e.textContent=h.facebookConfigured?'Facebook connected':'Facebook credentials missing';if(h.facebookConfigured)e.classList.add('ok')}
+async function refreshTrends(){const j=await api('/api/research/refresh',{method:'POST'});state.candidates=j.items;render()}
+async function gen(id){await api(`/api/posts/${id}/generate`,{method:'POST',body:'{}'});await load()}
+async function approve(id){await api(`/api/posts/${id}/approve`,{method:'POST'});await load()}
+async function publishPost(id){try{await api(`/api/posts/${id}/publish`,{method:'POST'});await load();alert('Published')}catch(e){alert(e.message)}}
+load();
+</script></body></html>
