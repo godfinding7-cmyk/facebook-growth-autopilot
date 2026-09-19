@@ -2,33 +2,43 @@
 
 Approval-first tool for Facebook Page content research, drafting, and official Meta Graph API publishing.
 
-## What works in this starter
+## What works
 - RSS-based fresh-topic research
-- Simple freshness scoring + duplicate removal
+- Freshness scoring + duplicate removal
 - Draft generation placeholder
-- Approve queue
+- Approval queue
+- Facebook Page credential validation
 - Facebook Page text-post publishing through Graph API
-- Lightweight responsive dashboard
+- Responsive dashboard
 - Rate limiting and basic HTTP hardening
 
-## Setup
+## Local setup
 1. Install Node.js 20+.
 2. Copy `.env.example` to `.env`.
 3. Run `npm install`.
 4. Run `npm run dev`.
 5. Open `http://localhost:3000`.
 
-## Facebook setup
-Fill these environment variables after creating/configuring a Meta app and obtaining a Page access token with the permissions required for your use case:
+## Connect a Facebook Page
+Configure a Meta developer app for the Facebook Page you manage and obtain a Page access token with the permissions needed to read the Page identity and publish Page posts.
 
-- `FACEBOOK_PAGE_ID`
-- `FACEBOOK_PAGE_ACCESS_TOKEN`
-- `META_GRAPH_VERSION`
+Set these values only in your local or hosting environment:
 
-Do not commit tokens to GitHub.
+```env
+META_GRAPH_VERSION=v26.0
+FACEBOOK_PAGE_ID=your_page_id
+FACEBOOK_PAGE_ACCESS_TOKEN=your_page_access_token
+```
 
-## Important design choice
-This MVP is approval-first. It does not automate a personal Facebook Profile and does not simulate browser activity, likes, follows, comments, or other engagement manipulation.
+Never paste a real Page token, App Secret, or other credential into source files or commit it to GitHub.
+
+After deployment, open the dashboard and press **Test Facebook**. The backend validates the credentials against Graph API and returns only the Page id/name to the browser; it never returns the token.
+
+## Safety choices
+- Approval mode is on by default.
+- This MVP does not automate a personal Facebook Profile.
+- It does not simulate likes, follows, comments, browser activity, or engagement manipulation.
+- Tokens are read from environment variables only.
 
 ## Next modules
 - Real AI provider adapter
