@@ -24,12 +24,98 @@ jobs:
           cat instakuku_chunks/chunk_* > instakuku-project.tar.gz.b64
           base64 -d instakuku-project.tar.gz.b64 > instakuku-project.tar.gz
           tar -xzf instakuku-project.tar.gz
+      - name: Apply InstaKuku 1.0.2 UI and quality fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path("InstaKuku-Android")
+
+          p = root / "app/src/main/res/layout/activity_main.xml"
+          s = p.read_text()
+          s = s.replace('android:layout_height="690dp"', 'android:layout_height="760dp"', 1)
+          s = s.replace('android:layout_height="220dp"\n                android:layout_gravity="bottom"', 'android:layout_height="272dp"\n                android:layout_gravity="bottom"', 1)
+          s = s.replace('android:layout_marginBottom="230dp"', 'android:layout_marginBottom="228dp"', 1)
+          s = s.replace('android:layout_width="118dp"\n                    android:layout_height="match_parent"', 'android:layout_width="124dp"\n                    android:layout_height="match_parent"', 1)
+          s = s.replace('android:paddingTop="14dp"', 'android:paddingTop="16dp"', 1)
+          s = s.replace('android:paddingBottom="12dp"', 'android:paddingBottom="14dp"', 1)
+          s = s.replace('<HorizontalScrollView\n                        android:layout_width="match_parent"\n                        android:layout_height="wrap_content"\n                        android:layout_marginTop="8dp"', '<HorizontalScrollView\n                        android:layout_width="match_parent"\n                        android:layout_height="46dp"\n                        android:layout_marginTop="10dp"')
+          s = s.replace('android:layout_height="58dp"\n                        android:layout_marginTop="9dp"', 'android:layout_height="56dp"\n                        android:layout_marginTop="10dp"', 1)
+          p.write_text(s)
+
+          p = root / "app/src/main/java/com/instakuku/app/OrbView.java"
+          s = p.read_text().replace('phase += 0.55f;', 'phase += 0.045f;')
+          p.write_text(s)
+
+          p = root / "app/src/main/java/com/instakuku/app/ApiClient.java"
+          s = p.read_text()
+          s = s.replace('public String ext = "mp4";\n    }', 'public String ext = "mp4";\n        public String note = "";\n    }')
+          s = s.replace('item.ext = f.optString("ext", "mp4");\n                        out.formats.add(item);', 'item.ext = f.optString("ext", "mp4");\n                        item.note = f.optString("note", f.optString("formatNote", ""));\n                        out.formats.add(item);')
+          p.write_text(s)
+
+          p = root / "app/src/main/java/com/instakuku/app/MainActivity.java"
+          s = p.read_text()
+          s = s.replace('floatAnimator.setDuration(2800);', 'floatAnimator.setDuration(5600);')
+          s = s.replace('else label = "Best MP4";', 'else label = "Original · Best quality";')
+          old = '''    private int displayQuality(ApiClient.FormatOption f) {
+                  if (f == null) return 0;
+                  int w = Math.max(0, f.width);
+                  int h = Math.max(0, f.height);
+                  if (w > 0 && h > 0) return Math.min(w, h);
+                  // When only one dimension is known, keep conventional landscape values.
+                  // Portrait formats are expected to provide width+height from the API.
+                  int only = w > 0 ? w : h;
+                  return only <= 1080 ? only : 0;
+              }
+          '''
+          new = '''    private int displayQuality(ApiClient.FormatOption f) {
+                  if (f == null) return 0;
+                  int w = Math.max(0, f.width);
+                  int h = Math.max(0, f.height);
+                  if (w > 0 && h > 0) return normalizeQuality(Math.min(w, h));
+
+                  int only = w > 0 ? w : h;
+                  if (only > 0) return normalizeQuality(only);
+
+                  String hint = ((f.note == null ? "" : f.note) + " " +
+                          (f.formatId == null ? "" : f.formatId)).toLowerCase(Locale.US);
+                  java.util.regex.Matcher pair = Pattern.compile("(\\\\d{3,4})\\\\s*[x×]\\\\s*(\\\\d{3,4})").matcher(hint);
+                  if (pair.find()) {
+                      try {
+                          return normalizeQuality(Math.min(Integer.parseInt(pair.group(1)), Integer.parseInt(pair.group(2))));
+                      } catch (Exception ignored) {}
+                  }
+                  java.util.regex.Matcher q = Pattern.compile("(?<!\\\\d)(1080|720|480|360|240)p?(?!\\\\d)").matcher(hint);
+                  if (q.find()) {
+                      try { return Integer.parseInt(q.group(1)); } catch (Exception ignored) {}
+                  }
+                  return 0;
+              }
+
+              private int normalizeQuality(int q) {
+                  if (q >= 1080) return 1080;
+                  if (q >= 720) return 720;
+                  if (q >= 480) return 480;
+                  if (q >= 360) return 360;
+                  if (q >= 240) return 240;
+                  return q > 0 && q <= 1080 ? q : 0;
+              }
+          '''
+          if old not in s:
+              raise SystemExit("displayQuality block not found")
+          s = s.replace(old, new)
+          p.write_text(s)
+
+          p = root / "app/build.gradle"
+          s = p.read_text().replace('versionCode 2', 'versionCode 3').replace("versionName '1.0.1'", "versionName '1.0.2'")
+          p.write_text(s)
+          PY
       - name: Build debug APK
         working-directory: InstaKuku-Android
         run: gradle :app:assembleDebug --stacktrace
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: InstaKuku-APK
+          name: InstaKuku-APK-v1.0.2
           path: InstaKuku-Android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
