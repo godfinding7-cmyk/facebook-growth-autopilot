@@ -21,6 +21,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Unpack Android project
         run: |
+          cat instakuku_chunks/chunk_* > instakuku-project.tar.gz.b64
           base64 -d instakuku-project.tar.gz.b64 > instakuku-project.tar.gz
           tar -xzf instakuku-project.tar.gz
       - name: Build debug APK
